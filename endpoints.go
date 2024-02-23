@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 )
-
 func getPersons(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "getPersons Called"})
 }
@@ -45,7 +44,8 @@ var albums = []gaia.Album{
 }
 
 func getAlbums(c *gin.Context) {
-	if err := c.BindJSON(albums); err != nil {
+	if err := c.BindJSON(albums);
+	err != nil {
 		c.IndentedJSON(http.StatusNotFound, gin.H{"error": "Albums not found"})
 	}
 	c.IndentedJSON(http.StatusOK, albums)

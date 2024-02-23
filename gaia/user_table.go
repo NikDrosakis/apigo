@@ -3,41 +3,60 @@ package gaia
 import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
+	"github.com/gin-gonic/gin"
+	"net/http"
 	"log"
 	"os"
 )
 
-func Userquery(tableName string) ([]*User, error) {
+func Userquery(c *gin.Context) {
+	// Retrieve id from the URL parameters
+	id := c.Param("id")
+	var err1 error
+	err1 = godotenv.Load(".env")
+	if err1 != nil {
+		log.Fatal("Error loading .env file")
+	}
 	slice := make([]*User, 0)
 	db, err := sql.Open("mysql", os.Getenv("MARIA_CONNECTOR"))
 	if err != nil {
-		return nil, err
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	defer db.Close()
 	//2nd
-	query := "SELECT id,uid,url,img,name,pass,firstname,lastname FROM " + tableName
-	results, err := db.Query(query, os.Getenv("MARIA_CONNECTOR"))
+	var results *sql.Rows
+	query := "SELECT id,url,img,name,pass,firstname,lastname FROM user"
+	if id != "" {
+		// If id is not empty, add a WHERE clause to filter by id
+		query += " WHERE id = ?"
+		results, err = db.Query(query, id)
+	}else{
+		results, err = db.Query(query)
+	}
 	if err != nil {
-		return nil, err
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 	defer results.Close()
 	for results.Next() {
 		var id int
-		var uid int
-		var url string
-		var img string
+		var url sql.NullString
+		var img sql.NullString
 		var name string
 		var pass string
 		var firstname string
 		var lastname string
-		err := results.Scan(&id, &uid, &url, &img, &name, &pass, &firstname, &lastname)
+		err := results.Scan(&id,&url,&img, &name, &pass, &firstname, &lastname)
 		if err != nil {
-			log.Fatal(err)
+			// Handle the error by sending an error response
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
 		}
 		//3rd
 		item := &User{
 			ID:        id,
-			UID:       uid,
 			Url:       url,
 			Img:       img,
 			Name:      name,
@@ -47,5 +66,5 @@ func Userquery(tableName string) ([]*User, error) {
 		}
 		slice = append(slice, item)
 	}
-	return slice, nil
+	c.IndentedJSON(http.StatusOK, slice)
 }
